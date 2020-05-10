@@ -49,22 +49,46 @@ ORDER BY tabla1.cant_componentes DESC
 -- Ejercicio 5
 
 
-/* Realizar una consulta que muestre código de artículo, detalle y cantidad de egresos de
+/*
+Realizar una consulta que muestre código de artículo, detalle y cantidad de egresos de
 stock que se realizaron para ese artículo en el año 2012 (egresan los productos que
 fueron vendidos). Mostrar solo aquellos que hayan tenido más egresos que en el 2011.
-
-prod_codigo, prod_detalle ventas_del_producto
-
-ventas de producto
 */
-SELECT prod_codigo, prod_detalle, ventas_anyio.cant_vendida, ventas_anyio.anyo FROM Producto INNER JOIN 
 
-(SELECT item_producto, SUM(item_cantidad) AS cant_vendida, YEAR(fact_fecha) AS anyo FROM Item_Factura INNER JOIN Factura
-ON item_tipo = fact_tipo AND item_sucursal = fact_sucursal AND item_numero = fact_numero
+SELECT prod_codigo, prod_detalle, SUM(ISNULL(item_cantidad, 0)) AS egresos FROM 
 
-GROUP BY item_producto, YEAR(fact_fecha)) AS ventas_anyio
+  Producto LEFT OUTER JOIN  Item_Factura
+	ON prod_codigo = item_producto   
+	LEFT OUTER JOIN Factura
+	ON fact_tipo = item_tipo 
+	AND fact_sucursal = item_sucursal 
+	AND fact_numero = item_numero
+	WHERE YEAR(fact_fecha) = 2012
+	GROUP BY prod_codigo, prod_detalle HAVING SUM(ISNULL(item_cantidad, 0)) > (SELECT SUM(ISNULL(item_cantidad, 0)) FROM
 
-ON prod_codigo = ventas_anyio.item_producto
+	Factura INNER JOIN Item_Factura 
+	ON fact_tipo = item_tipo 
+	AND fact_sucursal = item_sucursal 
+	AND fact_numero = item_numero 
+	WHERE YEAR(fact_fecha) = 2011
+	AND prod_codigo = item_producto)
 
---GROUP BY prod_codigo, prod_detalle 
---ORDER BY item_producto
+ORDER BY prod_codigo 
+
+
+
+--  Ejercicio 6
+
+/*
+Mostrar para todos los rubros de artículos código, detalle, cantidad de artículos de ese
+rubro y stock total de ese rubro de artículos. Solo tener en cuenta aquellos artículos que
+tengan un stock mayor al del artículo ‘00000000’ en el depósito ‘00’
+
+Todos los rubros
+rubr_id, rubr_detalle, sum(productos de rubro) sum(stock total de cada prod del rubro)
+*/
+
+SELECT rubr_id, rubr_detalle, (SELECT COUNT(*) FROM Producto WHERE prod_rubro = r1.rubr_id) AS cant_productos, 
+ 	(SELECT SUM(stoc_cantidad) FROM Rubro AS r2 INNER JOIN Producto ON rubr_id = prod_rubro 
+	LEFT OUTER JOIN STOCK ON prod_codigo = stoc_producto WHERE r1.rubr_id = r2.rubr_id) AS stoc_total 
+FROM Rubro AS r1
